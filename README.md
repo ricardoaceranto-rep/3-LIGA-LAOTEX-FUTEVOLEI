@@ -32,6 +32,11 @@ criada manualmente no Firebase Authentication.
 5. Em **Configurações do projeto → Seus apps**, crie um app da Web e copie
    as chaves do `firebaseConfig`.
 
+> **Este repositório já está configurado para o projeto `liga-lalotex`**
+> (`.firebaserc` e o e-mail admin em `firestore.rules` já apontam pra ele).
+> Se for reaproveitar este projeto para outra temporada/organizador, troque
+> esses dois arquivos pelos dados do novo projeto Firebase antes de seguir.
+
 ## 2. Configurar o app localmente
 
 ```bash
@@ -98,15 +103,36 @@ Não é necessário nenhum script de seed separado.
 
 ## 5. Build e deploy
 
+### Opção A — Firebase Hosting (recomendado, mesmo projeto do Firestore/Auth)
+
+Pré-requisito: o usuário admin já precisa existir em **Authentication → Users**
+(passo 1.4) — sem isso o login de admin no app publicado não funciona.
+
 ```bash
+npm install -g firebase-tools   # se ainda não tiver
+firebase login                   # abre o navegador, loga com a conta dona do projeto
+
 npm run build
+firebase deploy
 ```
 
-### Opção A — Firebase Hosting
+`firebase deploy` (sem `--only`) publica **hosting + firestore.rules juntos**,
+porque os dois já estão declarados no `firebase.json` — rode assim (não só
+`--only hosting`) para garantir que as regras de segurança do passo 3
+realmente entrem em vigor no projeto.
+
+Se quiser publicar só um dos dois depois (ex.: só trocou o front, não mexeu
+nas regras):
 
 ```bash
 firebase deploy --only hosting
+firebase deploy --only firestore:rules
 ```
+
+Ao final, o CLI imprime a URL pública (formato
+`https://<project-id>.web.app` e `https://<project-id>.firebaseapp.com`) —
+esse é o link fixo que vai para o grupo do WhatsApp da liga. Todo mundo abre
+em modo leitura; só o organizador precisa logar.
 
 ### Opção B — Vercel
 
@@ -116,11 +142,8 @@ npx vercel
 
 Configure as mesmas variáveis `VITE_FIREBASE_*` e `VITE_ADMIN_EMAIL` no
 painel do projeto na Vercel (Settings → Environment Variables), com
-"Framework Preset" = Vite.
-
-Depois do deploy você terá uma URL fixa — é esse link que vai para o grupo
-do WhatsApp da liga. Todo mundo abre em modo leitura; só o organizador
-precisa logar.
+"Framework Preset" = Vite. Nesse caso as `firestore.rules` continuam sendo
+publicadas separadamente, direto no projeto Firebase (`firebase deploy --only firestore:rules`).
 
 ## Modelo de dados (Firestore)
 
