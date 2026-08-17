@@ -63,3 +63,4 @@ export const PONTOS_VICE_OURO = 6;
 export const PONTOS_SEMI_OURO = 4;
 export const PONTOS_CAMPEAO_PRATA = 3;
 export const PONTOS_VICE_PRATA = 2;
+export const PONTOS_SEMI_PRATA = 1;
