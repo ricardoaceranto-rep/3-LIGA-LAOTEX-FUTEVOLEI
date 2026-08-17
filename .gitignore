@@ -12,6 +12,9 @@ dist
 dist-ssr
 *.local
 
+# npm (não versionamos o lockfile: gerado por `npm install`)
+package-lock.json
+
 # Firebase
 .env
 .env.*
