@@ -24,6 +24,7 @@ export function RankingView() {
               <tr><td>Semifinalistas Série Ouro (3º e 4º)</td><td className="center mono">4 pts</td></tr>
               <tr><td>🥇 Campeão Série Prata</td><td className="center mono">3 pts</td></tr>
               <tr><td>🥈 Vice Série Prata</td><td className="center mono">2 pts</td></tr>
+              <tr><td>Semifinalistas Série Prata (3º e 4º)</td><td className="center mono">1 pt</td></tr>
             </tbody>
           </table>
         </div>

@@ -4,7 +4,7 @@
 
 import {
   GROUPS, MATCH_PATTERN, N_PLAYERS, N_ROUNDS, PONTOS_CAMPEAO_OURO, PONTOS_CAMPEAO_PRATA,
-  PONTOS_SEMI_OURO, PONTOS_VICE_OURO, PONTOS_VICE_PRATA, PTS_VITORIA, ROUNDS, MESES,
+  PONTOS_SEMI_OURO, PONTOS_SEMI_PRATA, PONTOS_VICE_OURO, PONTOS_VICE_PRATA, PTS_VITORIA, ROUNDS, MESES,
 } from './fixedData';
 import type { GroupKey } from './fixedData';
 import type {
@@ -263,6 +263,15 @@ export function computeRankingGeral(players: string[], weeks: WeeksMap): Ranking
         addPontosDupla(week.assignedRound, finalW, PONTOS_CAMPEAO_OURO, totals);
         addPontosDupla(week.assignedRound, finalL, PONTOS_VICE_OURO, totals);
       }
+    }
+    // 3º/4º da Série Prata = perdedoras das semifinais
+    if (wS1 !== null) {
+      const loser = wS1 === teams.sfS1[0].duplaNo ? teams.sfS1[1].duplaNo : teams.sfS1[0].duplaNo;
+      addPontosDupla(week.assignedRound, loser, PONTOS_SEMI_PRATA, totals);
+    }
+    if (wS2 !== null) {
+      const loser = wS2 === teams.sfS2[0].duplaNo ? teams.sfS2[1].duplaNo : teams.sfS2[0].duplaNo;
+      addPontosDupla(week.assignedRound, loser, PONTOS_SEMI_PRATA, totals);
     }
     if (wS1 !== null && wS2 !== null) {
       const finalWS = winnerOf(week, 'finalS', wS1, wS2);
