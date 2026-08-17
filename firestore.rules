@@ -1,0 +1,27 @@
+rules_version = '2';
+
+// Leitura pública para qualquer jogador acompanhar pelo link, sem login.
+// Escrita só é permitida para o e-mail do organizador (admin) autenticado
+// via Firebase Authentication (e-mail/senha).
+//
+// IMPORTANTE: troque o e-mail abaixo pelo e-mail real da conta admin criada
+// no Firebase Authentication antes de publicar (deve ser o MESMO e-mail
+// configurado em VITE_ADMIN_EMAIL no .env do app). Veja o README.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'ricardoaceranto@gmail.com';
+    }
+
+    match /config/{document=**} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /weeks/{week} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}
