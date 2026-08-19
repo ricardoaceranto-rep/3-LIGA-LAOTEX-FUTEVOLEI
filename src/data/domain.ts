@@ -33,6 +33,28 @@ export function emptyWeekData(): WeekData {
   };
 }
 
+// Preenche com valores padrão qualquer campo ausente num documento vindo do
+// Firestore — em especial os jogos de knockout adicionados depois que a
+// rodada já existia (ex.: thirdG/thirdS da Disputa de 3º Lugar). Sem isso,
+// uma rodada salva antes desses campos existirem chega com
+// `knockout.thirdG === undefined`, e qualquer leitura de `.h`/`.a` quebra.
+// Sempre usar esta função (nunca o dado cru do Firestore) como fonte de
+// WeekData no app.
+export function normalizeWeekData(raw: Partial<WeekData> | undefined | null): WeekData {
+  const base = emptyWeekData();
+  if (!raw) return base;
+  return {
+    ...base,
+    ...raw,
+    groupScores: {
+      A: raw.groupScores?.A ?? base.groupScores.A,
+      B: raw.groupScores?.B ?? base.groupScores.B,
+    },
+    knockout: { ...base.knockout, ...raw.knockout },
+    playerOverrides: raw.playerOverrides ?? base.playerOverrides,
+  };
+}
+
 export function playerName(players: string[], num: number): string {
   const nm = players[num - 1];
   return nm && nm.trim() ? nm.trim() : `Jogador ${num}`;
@@ -119,7 +141,7 @@ export function duplasDoGrupo(week: WeekData | undefined, group: GroupKey): numb
 // Classificação de um grupo de 4 duplas (todos x todos, turno único)
 export function computeGroupStandings(week: WeekData | undefined, group: GroupKey): GroupStandingRow[] {
   const duplasGlobais = duplasDoGrupo(week, group);
-  const games = week?.groupScores[group] ?? Array.from({ length: 6 }, emptyMatchScore);
+  const games = week?.groupScores?.[group] ?? Array.from({ length: 6 }, emptyMatchScore);
   const stats = duplasGlobais.map(() => ({ jogos: 0, v: 0, d: 0, pf: 0, pc: 0 }));
   MATCH_PATTERN.forEach((pat, i) => {
     const [hLocal, aLocal] = pat;
@@ -160,7 +182,12 @@ export function groupPosMap(week: WeekData | undefined, group: GroupKey): Record
   return map;
 }
 
-export function isDecisive(s: MatchScore): boolean {
+// Aceita undefined de propósito: dados antigos do Firestore podem não ter
+// ainda o campo de um jogo (ex.: thirdG/thirdS), e essa função é chamada
+// direto com `week.knockout[key]` em alguns lugares — sem essa checagem,
+// um campo ausente quebra a leitura de `.h`.
+export function isDecisive(s: MatchScore | undefined | null): boolean {
+  if (!s) return false;
   const h = num(s.h);
   const a = num(s.a);
   return h !== null && a !== null && h !== a;
@@ -168,17 +195,19 @@ export function isDecisive(s: MatchScore): boolean {
 
 export function roundStatus(week: WeekData | undefined): RoundStatus {
   if (!week?.assignedRound) return 'undrawn';
-  const anyGroupScore = GROUPS.some((g) => week.groupScores[g].some((m) => m.h !== '' && m.a !== ''));
-  const anyKo = Object.values(week.knockout).some((k) => k.h !== '' || k.a !== '');
+  const groupScores = week.groupScores ?? { A: [], B: [] };
+  const knockout = week.knockout ?? ({} as Partial<Knockout>);
+  const anyGroupScore = GROUPS.some((g) => (groupScores[g] ?? []).some((m) => m?.h !== '' && m?.a !== ''));
+  const anyKo = Object.values(knockout).some((k) => k && (k.h !== '' || k.a !== ''));
   const allPlacementsDone = (['finalG', 'thirdG', 'finalS', 'thirdS'] as const)
-    .every((key) => isDecisive(week.knockout[key]));
+    .every((key) => isDecisive(knockout[key]));
   if (allPlacementsDone) return 'done';
   if (anyGroupScore || anyKo) return 'progress';
   return 'upcoming';
 }
 
 export function winnerOf(week: WeekData | undefined, key: KnockoutKey, duplaA: number | null, duplaB: number | null): number | null {
-  const s = week?.knockout[key];
+  const s = week?.knockout?.[key];
   if (!s) return null;
   const h = num(s.h);
   const a = num(s.a);
