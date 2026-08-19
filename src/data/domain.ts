@@ -4,7 +4,8 @@
 
 import {
   GROUPS, MATCH_PATTERN, N_PLAYERS, N_ROUNDS, PONTOS_CAMPEAO_OURO, PONTOS_CAMPEAO_PRATA,
-  PONTOS_SEMI_OURO, PONTOS_SEMI_PRATA, PONTOS_VICE_OURO, PONTOS_VICE_PRATA, PTS_VITORIA, ROUNDS, MESES,
+  PONTOS_QUARTO_OURO, PONTOS_QUARTO_PRATA, PONTOS_TERCEIRO_OURO, PONTOS_TERCEIRO_PRATA,
+  PONTOS_VICE_OURO, PONTOS_VICE_PRATA, PTS_VITORIA, ROUNDS, MESES,
 } from './fixedData';
 import type { GroupKey } from './fixedData';
 import type {
@@ -25,8 +26,8 @@ export function emptyWeekData(): WeekData {
       B: Array.from({ length: 6 }, emptyMatchScore),
     },
     knockout: {
-      sfG1: emptyMatchScore(), sfG2: emptyMatchScore(), finalG: emptyMatchScore(),
-      sfS1: emptyMatchScore(), sfS2: emptyMatchScore(), finalS: emptyMatchScore(),
+      sfG1: emptyMatchScore(), sfG2: emptyMatchScore(), thirdG: emptyMatchScore(), finalG: emptyMatchScore(),
+      sfS1: emptyMatchScore(), sfS2: emptyMatchScore(), thirdS: emptyMatchScore(), finalS: emptyMatchScore(),
     },
     playerOverrides: {},
   };
@@ -169,9 +170,9 @@ export function roundStatus(week: WeekData | undefined): RoundStatus {
   if (!week?.assignedRound) return 'undrawn';
   const anyGroupScore = GROUPS.some((g) => week.groupScores[g].some((m) => m.h !== '' && m.a !== ''));
   const anyKo = Object.values(week.knockout).some((k) => k.h !== '' || k.a !== '');
-  const finalGDone = isDecisive(week.knockout.finalG);
-  const finalSDone = isDecisive(week.knockout.finalS);
-  if (finalGDone && finalSDone) return 'done';
+  const allPlacementsDone = (['finalG', 'thirdG', 'finalS', 'thirdS'] as const)
+    .every((key) => isDecisive(week.knockout[key]));
+  if (allPlacementsDone) return 'done';
   if (anyGroupScore || anyKo) return 'progress';
   return 'upcoming';
 }
@@ -183,6 +184,12 @@ export function winnerOf(week: WeekData | undefined, key: KnockoutKey, duplaA: n
   const a = num(s.a);
   if (h === null || a === null || h === a) return null;
   return h > a ? duplaA : duplaB;
+}
+
+export function loserOf(week: WeekData | undefined, key: KnockoutKey, duplaA: number | null, duplaB: number | null): number | null {
+  const winner = winnerOf(week, key, duplaA, duplaB);
+  if (winner === null) return null;
+  return winner === duplaA ? duplaB : duplaA;
 }
 
 export interface KoTeams {
@@ -226,13 +233,24 @@ export function championsOfRound(week: WeekData | undefined): { ouro: [number, n
   return { ouro, prata };
 }
 
-/* ---- Pontuação individual (ranking geral da temporada) ---- */
-function addPontosDupla(assignedRound: number | null, duplaNo: number | null, pts: number, totals: number[]): void {
+/* ---- Pontuação individual (ranking geral da temporada) ----
+ * Suplente/ausente não pontuam: se o admin registrou um suplente para um
+ * jogador naquela semana (playerOverrides), esse número de jogador titular
+ * fica de fora do ranking daquela rodada — o outro titular da dupla
+ * continua pontuando normalmente. Isso é checado por jogador, não por
+ * dupla: os dois membros de uma mesma dupla podem receber pontuações
+ * diferentes na mesma rodada. */
+function playerAusente(week: WeekData, playerNum: number): boolean {
+  return Boolean(week.playerOverrides?.[playerNum]?.trim());
+}
+
+function addPontosDupla(week: WeekData, duplaNo: number | null, pts: number, totals: number[]): void {
   if (duplaNo === null || duplaNo === undefined) return;
-  const pair = duplaOfRoundLocal(assignedRound, duplaNo);
+  const pair = duplaOfRoundLocal(week.assignedRound, duplaNo);
   if (!pair) return;
-  totals[pair[0]] += pts;
-  totals[pair[1]] += pts;
+  pair.forEach((playerNum) => {
+    if (!playerAusente(week, playerNum)) totals[playerNum] += pts;
+  });
 }
 
 export function computeRankingGeral(players: string[], weeks: WeeksMap): RankingRow[] {
@@ -244,41 +262,49 @@ export function computeRankingGeral(players: string[], weeks: WeeksMap): Ranking
 
     const wG1 = winnerOf(week, 'sfG1', teams.sfG1[0].duplaNo, teams.sfG1[1].duplaNo);
     const wG2 = winnerOf(week, 'sfG2', teams.sfG2[0].duplaNo, teams.sfG2[1].duplaNo);
-    const wS1 = winnerOf(week, 'sfS1', teams.sfS1[0].duplaNo, teams.sfS1[1].duplaNo);
-    const wS2 = winnerOf(week, 'sfS2', teams.sfS2[0].duplaNo, teams.sfS2[1].duplaNo);
+    const lG1 = loserOf(week, 'sfG1', teams.sfG1[0].duplaNo, teams.sfG1[1].duplaNo);
+    const lG2 = loserOf(week, 'sfG2', teams.sfG2[0].duplaNo, teams.sfG2[1].duplaNo);
 
-    // 3º/4º da Série Ouro = perdedoras das semifinais
-    if (wG1 !== null) {
-      const loser = wG1 === teams.sfG1[0].duplaNo ? teams.sfG1[1].duplaNo : teams.sfG1[0].duplaNo;
-      addPontosDupla(week.assignedRound, loser, PONTOS_SEMI_OURO, totals);
-    }
-    if (wG2 !== null) {
-      const loser = wG2 === teams.sfG2[0].duplaNo ? teams.sfG2[1].duplaNo : teams.sfG2[0].duplaNo;
-      addPontosDupla(week.assignedRound, loser, PONTOS_SEMI_OURO, totals);
-    }
     if (wG1 !== null && wG2 !== null) {
       const finalW = winnerOf(week, 'finalG', wG1, wG2);
       if (finalW !== null) {
         const finalL = finalW === wG1 ? wG2 : wG1;
-        addPontosDupla(week.assignedRound, finalW, PONTOS_CAMPEAO_OURO, totals);
-        addPontosDupla(week.assignedRound, finalL, PONTOS_VICE_OURO, totals);
+        addPontosDupla(week, finalW, PONTOS_CAMPEAO_OURO, totals);
+        addPontosDupla(week, finalL, PONTOS_VICE_OURO, totals);
       }
     }
-    // 3º/4º da Série Prata = perdedoras das semifinais
-    if (wS1 !== null) {
-      const loser = wS1 === teams.sfS1[0].duplaNo ? teams.sfS1[1].duplaNo : teams.sfS1[0].duplaNo;
-      addPontosDupla(week.assignedRound, loser, PONTOS_SEMI_PRATA, totals);
+    // 3º/4º da Série Ouro = disputa entre as perdedoras das semifinais
+    if (lG1 !== null && lG2 !== null) {
+      const thirdW = winnerOf(week, 'thirdG', lG1, lG2);
+      if (thirdW !== null) {
+        const thirdL = thirdW === lG1 ? lG2 : lG1;
+        addPontosDupla(week, thirdW, PONTOS_TERCEIRO_OURO, totals);
+        addPontosDupla(week, thirdL, PONTOS_QUARTO_OURO, totals);
+      }
     }
-    if (wS2 !== null) {
-      const loser = wS2 === teams.sfS2[0].duplaNo ? teams.sfS2[1].duplaNo : teams.sfS2[0].duplaNo;
-      addPontosDupla(week.assignedRound, loser, PONTOS_SEMI_PRATA, totals);
-    }
+
+    const wS1 = winnerOf(week, 'sfS1', teams.sfS1[0].duplaNo, teams.sfS1[1].duplaNo);
+    const wS2 = winnerOf(week, 'sfS2', teams.sfS2[0].duplaNo, teams.sfS2[1].duplaNo);
+    const lS1 = loserOf(week, 'sfS1', teams.sfS1[0].duplaNo, teams.sfS1[1].duplaNo);
+    const lS2 = loserOf(week, 'sfS2', teams.sfS2[0].duplaNo, teams.sfS2[1].duplaNo);
+
     if (wS1 !== null && wS2 !== null) {
       const finalWS = winnerOf(week, 'finalS', wS1, wS2);
       if (finalWS !== null) {
         const finalLS = finalWS === wS1 ? wS2 : wS1;
-        addPontosDupla(week.assignedRound, finalWS, PONTOS_CAMPEAO_PRATA, totals);
-        addPontosDupla(week.assignedRound, finalLS, PONTOS_VICE_PRATA, totals);
+        addPontosDupla(week, finalWS, PONTOS_CAMPEAO_PRATA, totals);
+        addPontosDupla(week, finalLS, PONTOS_VICE_PRATA, totals);
+      }
+    }
+    // 3º/4º da Série Prata = disputa entre as perdedoras das semifinais
+    // (mesmo os dois valendo o mesmo tanto, o jogo precisa acontecer —
+    // é o critério oficial de classificação da rodada)
+    if (lS1 !== null && lS2 !== null) {
+      const thirdWS = winnerOf(week, 'thirdS', lS1, lS2);
+      if (thirdWS !== null) {
+        const thirdLS = thirdWS === lS1 ? lS2 : lS1;
+        addPontosDupla(week, thirdWS, PONTOS_TERCEIRO_PRATA, totals);
+        addPontosDupla(week, thirdLS, PONTOS_QUARTO_PRATA, totals);
       }
     }
   }

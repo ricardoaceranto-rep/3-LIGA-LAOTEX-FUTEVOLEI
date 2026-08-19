@@ -11,9 +11,11 @@ export interface GroupAssignment {
 export interface Knockout {
   sfG1: MatchScore;
   sfG2: MatchScore;
+  thirdG: MatchScore;
   finalG: MatchScore;
   sfS1: MatchScore;
   sfS2: MatchScore;
+  thirdS: MatchScore;
   finalS: MatchScore;
 }
 

@@ -60,7 +60,9 @@ export function courtOfGame(gameIndex: number): 1 | 2 {
 
 export const PONTOS_CAMPEAO_OURO = 8;
 export const PONTOS_VICE_OURO = 6;
-export const PONTOS_SEMI_OURO = 4;
+export const PONTOS_TERCEIRO_OURO = 5;
+export const PONTOS_QUARTO_OURO = 4;
 export const PONTOS_CAMPEAO_PRATA = 3;
 export const PONTOS_VICE_PRATA = 2;
-export const PONTOS_SEMI_PRATA = 1;
+export const PONTOS_TERCEIRO_PRATA = 1;
+export const PONTOS_QUARTO_PRATA = 1;
