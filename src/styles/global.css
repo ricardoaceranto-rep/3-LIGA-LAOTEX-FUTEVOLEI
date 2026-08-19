@@ -185,7 +185,7 @@ button.primary:disabled{opacity:.5; cursor:default;}
 .serie-dot.ouro{background:var(--gold);}
 .serie-dot.prata{background:var(--prata);}
 
-.bracket{display:grid; grid-template-columns:1fr 1fr 1fr; gap:18px; align-items:start;}
+.bracket{display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:18px; align-items:start;}
 @media(max-width:820px){.bracket{grid-template-columns:1fr;}}
 .ko-box{background:var(--sand); border:1.5px solid var(--line); border-radius:12px; padding:14px 16px;}
 .ko-box h5{margin:0 0 10px 0; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--ink-soft); font-weight:600;}
