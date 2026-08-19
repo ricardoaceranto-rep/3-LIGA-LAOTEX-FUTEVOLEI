@@ -19,7 +19,7 @@ function SemiBox({ week, koKey, teams }: SemiBoxProps) {
   const { players, weeks, canEdit, setKnockoutScore } = useSeason();
   const weekData = weeks[week];
   const assigned = weekData?.assignedRound ?? null;
-  const s = weekData?.knockout[koKey] ?? { h: '', a: '' };
+  const s = weekData?.knockout?.[koKey] ?? { h: '', a: '' };
   const pairA = duplaOfRoundLocal(assigned, teams[0].duplaNo);
   const pairB = duplaOfRoundLocal(assigned, teams[1].duplaNo);
   const winner = winnerOf(weekData, koKey, teams[0].duplaNo, teams[1].duplaNo);
@@ -59,7 +59,7 @@ function ResultBox({ week, koKey, title, serie, duplaA, duplaB, badgeIcon, badge
   const { players, weeks, canEdit, setKnockoutScore } = useSeason();
   const weekData = weeks[week];
   const assigned = weekData?.assignedRound ?? null;
-  const s = weekData?.knockout[koKey] ?? { h: '', a: '' };
+  const s = weekData?.knockout?.[koKey] ?? { h: '', a: '' };
 
   if (duplaA === null || duplaB === null) {
     return (

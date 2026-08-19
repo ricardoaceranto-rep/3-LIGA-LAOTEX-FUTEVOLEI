@@ -27,7 +27,7 @@ export function GroupCard({ week, group }: Props) {
           const homePair = duplaOfRoundLocal(assigned, homeGlobal);
           const awayPair = duplaOfRoundLocal(assigned, awayGlobal);
           if (!homePair || !awayPair) return null;
-          const gval = weekData?.groupScores[group][i] ?? { h: '', a: '' };
+          const gval = weekData?.groupScores?.[group]?.[i] ?? { h: '', a: '' };
           const courtNum = courtOfGame(i);
           return (
             <div className="match-block" key={i}>

@@ -9,7 +9,9 @@ import { useAuth } from './AuthContext';
 import {
   DATES as DATES_DEFAULT, N_ROUNDS, PLAYERS_INITIAL, SEASON_NAME,
 } from '../data/fixedData';
-import { emptyWeekData, generateGroupAssignment, randomAvailableRound } from '../data/domain';
+import {
+  emptyWeekData, generateGroupAssignment, normalizeWeekData, randomAvailableRound,
+} from '../data/domain';
 import type { KnockoutKey, WeekData, WeeksMap } from '../data/types';
 
 interface SeasonContextValue {
@@ -67,7 +69,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
         const next: WeeksMap = { ...defaultWeeksMap(), ...prev };
         snap.docs.forEach((d) => {
           const w = Number(d.id);
-          if (w >= 1 && w <= N_ROUNDS) next[w] = { ...emptyWeekData(), ...(d.data() as Partial<WeekData>) };
+          if (w >= 1 && w <= N_ROUNDS) next[w] = normalizeWeekData(d.data() as Partial<WeekData>);
         });
         return next;
       });
@@ -99,7 +101,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   }
 
   async function setAssignedRound(week: number, sorteioNo: number | null) {
-    const current = weeksRef.current[week] ?? emptyWeekData();
+    const current = normalizeWeekData(weeksRef.current[week]);
     const next: WeekData = {
       ...current,
       assignedRound: sorteioNo,
@@ -116,7 +118,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
       const pick = randomAvailableRound(snapshot, w);
       if (pick === null) break;
       const next: WeekData = {
-        ...(snapshot[w] ?? emptyWeekData()),
+        ...normalizeWeekData(snapshot[w]),
         assignedRound: pick,
         groupAssignment: generateGroupAssignment(),
       };
@@ -128,7 +130,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   }
 
   async function setGroupScore(week: number, group: 'A' | 'B', gameIdx: number, side: 'h' | 'a', value: string) {
-    const current = weeksRef.current[week] ?? emptyWeekData();
+    const current = normalizeWeekData(weeksRef.current[week]);
     const groupScores = {
       ...current.groupScores,
       [group]: current.groupScores[group].map((m, i) => (i === gameIdx ? { ...m, [side]: value } : m)),
@@ -140,7 +142,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   }
 
   async function setKnockoutScore(week: number, key: KnockoutKey, side: 'h' | 'a', value: string) {
-    const current = weeksRef.current[week] ?? emptyWeekData();
+    const current = normalizeWeekData(weeksRef.current[week]);
     const next: WeekData = {
       ...current,
       knockout: { ...current.knockout, [key]: { ...current.knockout[key], [side]: value } },
@@ -151,7 +153,7 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
   }
 
   async function setPlayerOverride(week: number, playerNum: number, value: string, canonicalName: string) {
-    const current = weeksRef.current[week] ?? emptyWeekData();
+    const current = normalizeWeekData(weeksRef.current[week]);
     const isOverride = Boolean(value.trim() && value.trim() !== canonicalName);
     const playerOverrides = { ...current.playerOverrides };
     if (isOverride) playerOverrides[playerNum] = value;
