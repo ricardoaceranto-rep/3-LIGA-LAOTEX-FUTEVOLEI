@@ -100,12 +100,20 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
     await setDoc(doc(db, 'config', 'season'), { nome: seasonName, players: newPlayers, dates }, { merge: true });
   }
 
+  // Sortear (ou re-sortear) a rodada da semana muda qual dupla cai em qual
+  // posição dos grupos — os placares e o mata-mata já lançados ficam
+  // amarrados à dupla errada se não forem zerados junto. Por isso
+  // groupScores/knockout sempre voltam limpos aqui, mesmo ao re-selecionar
+  // o mesmo Sorteio nº (o sorteio dos grupos A/B é sempre novo).
   async function setAssignedRound(week: number, sorteioNo: number | null) {
     const current = normalizeWeekData(weeksRef.current[week]);
+    const fresh = emptyWeekData();
     const next: WeekData = {
       ...current,
       assignedRound: sorteioNo,
       groupAssignment: sorteioNo ? generateGroupAssignment() : null,
+      groupScores: fresh.groupScores,
+      knockout: fresh.knockout,
     };
     setWeeks((prev) => ({ ...prev, [week]: next }));
     await writeWeek(week, next);
@@ -117,10 +125,13 @@ export function SeasonProvider({ children }: { children: ReactNode }) {
       if (snapshot[w]?.assignedRound) continue;
       const pick = randomAvailableRound(snapshot, w);
       if (pick === null) break;
+      const fresh = emptyWeekData();
       const next: WeekData = {
         ...normalizeWeekData(snapshot[w]),
         assignedRound: pick,
         groupAssignment: generateGroupAssignment(),
+        groupScores: fresh.groupScores,
+        knockout: fresh.knockout,
       };
       snapshot = { ...snapshot, [w]: next };
       setWeeks(snapshot);
